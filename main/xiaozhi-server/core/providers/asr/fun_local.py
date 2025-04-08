@@ -8,7 +8,7 @@ from typing import Optional, Tuple, List
 import uuid
 import opuslib_next
 from core.providers.asr.base import ASRProviderBase
-
+from core.providers.asr.identify import SpeakerIdentification
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 
@@ -92,8 +92,21 @@ class ASRProvider(ASRProviderBase):
                 batch_size_s=60,
             )
             text = rich_transcription_postprocess(result[0]["text"])
-            logger.bind(tag=TAG).debug(f"语音识别耗时: {time.time() - start_time:.3f}s | 结果: {text}")
+            
+            # 声纹注册
+            speaker_identification = SpeakerIdentification()
+            if "开始注册" in text:
+                speaker_name = "雨落倾城"
+                speaker_identification.register_speaker(file_path, speaker_name)
+                return "", file_path
 
+            # 声纹识别
+            speaker, score = speaker_identification.identify_speaker(file_path)
+            if speaker == "未知说话人":
+                return "", file_path
+            text += f" 当前说话人: {speaker}"
+
+            logger.bind(tag=TAG).debug(f"语音识别耗时: {time.time() - start_time:.3f}s | 结果: {text}")
             return text, file_path
 
         except Exception as e:
