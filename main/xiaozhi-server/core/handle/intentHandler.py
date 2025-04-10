@@ -94,6 +94,21 @@ async def process_intent_result(conn, intent, original_text):
         return True
 
     # 其他意图处理可以在这里扩展
+    # 声纹注册
+    if "声纹注册" in intent:
+        logger.bind(tag=TAG).info(f"识别到声纹注册意图: {intent}")
+        user_name = extract_text_in_brackets(intent)
+        function_id = str(uuid.uuid4().hex)
+        function_name = "register_voiceprint"
+        function_arguments = '{ "user_name": "' + user_name + '" }'
+
+        function_call_data = {
+            "name": function_name,
+            "id": function_id,
+            "arguments": function_arguments
+        }
+        conn.func_handler.handle_llm_function_call(conn, function_call_data)
+        return True
 
     # 默认返回False，表示继续常规聊天流程
     return False
