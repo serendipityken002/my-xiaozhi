@@ -99,7 +99,7 @@ class ASRProvider(ASRProviderBase):
             speaker, score = speaker_identification.identify_speaker(file_path)
             # if speaker == "未知说话人":
             #     return "", file_path
-            text += f" 当前说话人: {speaker}"
+            text = f"({speaker})" + text
 
             logger.bind(tag=TAG).debug(f"语音识别耗时: {time.time() - start_time:.3f}s | 结果: {text}")
             return text, file_path

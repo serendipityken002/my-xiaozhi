@@ -1,14 +1,15 @@
 from funasr import AutoModel
 import numpy as np
 import os
-import pickle
+import json
+import time
 
 def cosine_similarity(vec1, vec2):
     """计算两个向量的余弦相似度"""
     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
 
 class SpeakerDatabase:
-    def __init__(self, db_path="speaker_db"):
+    def __init__(self, db_path="speaker_db.json"):
         """初始化说话人数据库
         
         Args:
@@ -23,15 +24,43 @@ class SpeakerDatabase:
     def _load_database(self):
         """加载数据库"""
         if os.path.exists(self.db_path):
-            with open(self.db_path, 'rb') as f:
-                self.speakers = pickle.load(f)
+            try:
+                with open(self.db_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                # 将列表转换回numpy数组
+                self.speakers = {}
+                for speaker, embeddings_list in data.items():
+                    self.speakers[speaker] = [np.array(emb) for emb in embeddings_list]
+                print(f"已加载声纹数据库，共有 {len(self.speakers)} 个说话人")
+            except Exception as e:
+                print(f"加载声纹数据库失败: {e}")
+                self.speakers = {}
     
     def _save_database(self):
         """保存数据库"""
         # 确保目录存在
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        with open(self.db_path, 'wb') as f:
-            pickle.dump(self.speakers, f)
+        
+        # 将numpy数组转换为列表以便JSON序列化
+        data_to_save = {}
+        for speaker, embeddings in self.speakers.items():
+            data_to_save[speaker] = [emb.tolist() for emb in embeddings]
+        
+        # 保存为JSON格式
+        with open(self.db_path, 'w', encoding='utf-8') as f:
+            json.dump(data_to_save, f, indent=2, ensure_ascii=False)
+        
+        # 同时保存一个可读的信息文件
+        info_path = os.path.splitext(self.db_path)[0] + "_info.txt"
+        with open(info_path, 'w', encoding='utf-8') as f:
+            f.write(f"声纹数据库信息 - 生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            for speaker, embeddings in self.speakers.items():
+                f.write(f"说话人: {speaker}\n")
+                f.write(f"  注册声纹数量: {len(embeddings)}\n")
+                for i, emb in enumerate(embeddings):
+                    f.write(f"  声纹 #{i+1}: 维度 {emb.shape}, 均值 {np.mean(emb):.4f}, 方差 {np.var(emb):.4f}\n")
+                f.write("\n")
 
 class SpeakerIdentification:
     _instance = None
@@ -97,15 +126,15 @@ class SpeakerIdentification:
                 self.register_speaker(wav_path, speaker_name)
         print(f"已将目录 {wav_dir} 中的所有说话人声纹特征注册到数据库")
 
-def main():
-    # 获取单例实例
-    speaker_id = SpeakerIdentification()
+# def main():
+#     # 获取单例实例
+#     speaker_id = SpeakerIdentification()
 
-    # speaker_id.batch_register_speaker("voice_data/雨落倾城")
+#     # speaker_id.batch_register_speaker("voice_data/雨落倾城")
 
-    speaker, score = speaker_id.identify_speaker("voice_data/雨落倾城/3.wav")
-    print(f"识别结果: {speaker}, 相似度得分: {score:.4f}")
+#     speaker, score = speaker_id.identify_speaker("voice_data/雨落倾城/3.wav")
+#     print(f"识别结果: {speaker}, 相似度得分: {score:.4f}")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
