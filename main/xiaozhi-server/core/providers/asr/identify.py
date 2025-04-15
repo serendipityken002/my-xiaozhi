@@ -60,7 +60,7 @@ class SpeakerIdentification:
         self.db._save_database()
         print(f"已将说话人 {speaker_name} 的声纹特征注册到数据库")
     
-    def identify_speaker(self, wav_path, threshold=0.5):
+    def identify_speaker(self, wav_path, threshold=0.3):
         """识别说话人身份"""
         if not self.db.speakers:
             return "数据库为空", 0.0

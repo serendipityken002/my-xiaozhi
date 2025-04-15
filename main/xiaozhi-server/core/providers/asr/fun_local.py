@@ -11,6 +11,7 @@ from core.providers.asr.base import ASRProviderBase
 from core.providers.asr.identify import SpeakerIdentification
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
+import librosa
 
 TAG = __name__
 logger = setup_logging()
@@ -52,7 +53,7 @@ class ASRProvider(ASRProviderBase):
 
     def save_audio_to_file(self, opus_data: List[bytes], session_id: str) -> str:
         """将Opus音频数据解码并保存为WAV文件"""
-        file_name = f"asr_{session_id}_{uuid.uuid4()}.wav"
+        file_name = f"asr_latest_{session_id}.wav"
         file_path = os.path.join(self.output_dir, file_name)
 
         decoder = opuslib_next.Decoder(16000, 1)  # 16kHz, 单声道
@@ -110,8 +111,9 @@ class ASRProvider(ASRProviderBase):
         finally:
             # 文件清理逻辑
             if self.delete_audio_file and file_path and os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                    logger.bind(tag=TAG).debug(f"已删除临时音频文件: {file_path}")
-                except Exception as e:
-                    logger.bind(tag=TAG).error(f"文件删除失败: {file_path} | 错误: {e}")
+                if "asr_latest_" not in file_path:
+                    try:
+                        os.remove(file_path)
+                        logger.bind(tag=TAG).debug(f"已删除临时音频文件: {file_path}")
+                    except Exception as e:
+                        logger.bind(tag=TAG).error(f"文件删除失败: {file_path} | 错误: {e}")

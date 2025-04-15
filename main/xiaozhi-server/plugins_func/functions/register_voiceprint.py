@@ -3,6 +3,10 @@ from config.logger import setup_logging
 from core.providers.asr.identify import SpeakerIdentification
 import uuid
 import traceback
+import opuslib_next
+import os
+import wave
+import librosa
 
 TAG = __name__
 logger = setup_logging()
@@ -29,13 +33,14 @@ register_voiceprint_function_desc = {
 @register_function('register_voiceprint', register_voiceprint_function_desc, ToolType.SYSTEM_CTL)
 def register_voiceprint(conn, user_name: str = None):
     try:
-        file_path = conn.asr.save_audio_to_file(conn.asr_audio, conn.session_id)
-        # speaker_id = SpeakerIdentification()
-        # speaker_id.register_speaker(file_path, user_name)
+        output_dir = 'tmp/'  # 需与fun_local.py中的self.output_dir保持一致
+        file_path = os.path.join(output_dir, f"asr_latest_{conn.session_id}.wav")
+        speaker_id = SpeakerIdentification()
+        speaker_id.register_speaker(file_path, user_name)
         name_text = f" {user_name}" if user_name else "您的"
         
         success_message = (
-            f"声纹注册成功！{name_text}声纹特征已保存。声纹音频{file_path}"
+            f"声纹注册成功！{name_text}声纹特征已保存。"
         )
         
         # 5. 返回成功消息
