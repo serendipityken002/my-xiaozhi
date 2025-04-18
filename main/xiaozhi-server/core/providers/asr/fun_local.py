@@ -9,6 +9,7 @@ import uuid
 import opuslib_next
 from core.providers.asr.base import ASRProviderBase
 from core.providers.asr.identify import SpeakerIdentification
+from core.providers.asr.jiangzao import denoise_with_noise_profile
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 import librosa
@@ -81,6 +82,7 @@ class ASRProvider(ASRProviderBase):
             # 保存音频文件
             start_time = time.time()
             file_path = self.save_audio_to_file(opus_data, session_id)
+            denoise_with_noise_profile(file_path, file_path, file_path)
             logger.bind(tag=TAG).debug(f"音频文件保存耗时: {time.time() - start_time:.3f}s | 路径: {file_path}")
 
             # 语音识别
