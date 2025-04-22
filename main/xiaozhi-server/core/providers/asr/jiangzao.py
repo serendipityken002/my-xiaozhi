@@ -1,6 +1,5 @@
 import numpy as np
 import scipy.io.wavfile as wav
-import matplotlib.pyplot as plt
 
 def denoise_with_noise_profile(target_wav_path, noise_wav_path, output_wav_path):
     """
