@@ -33,21 +33,26 @@ pip install -r requirements.txt
 ```
 
 **3. 下载模型文件**
+
 这里只需要下载sensevoice的模型文件，大概八百多mb，下载完成后将model.pt文件放到`main\xiaozhi-server\models\SenseVoiceSmall`目录下。
+
 ![model下载](images/model.png)
 
 **4. 配置.config.yaml文件**
-- 按需修改即可，主要配置**STT、LLM和TTS**三部分。第一次使用需要申请chatllm的api key，但是本项目后来换成本地部署的千问大模型了，在此不赘述，后面会详细描述
+
+按需修改即可，主要配置**STT、LLM和TTS**三部分。第一次使用需要申请chatllm的api key，但是本项目后来换成本地部署的千问大模型了，在此不赘述，后面会详细描述
 
 #### 二、添加声纹识别功能
 FunASR是一个语言识别工具箱，它可以使用SenseVoice这种语音转文字功能，也可以用来进行声纹识别。本项目采用`speech_campplus_sv_zh-cn_16k-common`模型进行声纹识别，该模型相较于其他有更快的推理速度，为主要用它来进行说话人确认。
 
 **1. 测试声纹识别模型**
+
 训练样本为四个人，每个人三段2-5秒的音频，将音频输入即可通过余弦相似度进行声纹匹配，声音越相似，余弦相似度越高。
 如下图，未注册的人最高相似度未0.35，注册的人在0.65，测试了三十多组数据，模型准确率在90%以上。于是决定将其投入项目中去。
 ![声纹识别效果](images/声纹识别效果.png)
 
 **2. 初次尝试为项目添加声纹识别逻辑**
+
 声纹识别无非是对音频进行处理，显然我需要找到音频的位置。于是我在项目进行STT的时候查找音频，最终发现在`main\xiaozhi-server\core\providers\asr\fun_local.py`处存在音频的路径。
 为了不破坏原有代码，我又新建了一个identify.py文件，专门用来进行声纹注册和识别。
     
@@ -71,15 +76,12 @@ with wave.open(file_path, "wb") as wf:
 ```
 
 **3. 声纹注册逻辑改进**
-<p>
+
 刚开始我准备直接提取用户的对话内容，若含有“注册”二字，则进行注册。经过测试，发现有些用户说话时会带有口音，导致模型无法识别出“注册”二字。
-</p>
-<p>
+
 经过调研发现，大模型本身具有<strong>函数调用</strong>功能，大模型可以更准确的识别出“注册”二字，然后进行主动调用注册函数。于是我决定将大模型的函数调用功能与声纹注册结合起来。
-</p>
-<p>
+
 这一过程<strong>相当复杂</strong>，本身大模型的函数调用就要写很多代码，在本项目中，整个函数调用部分分在了各个文件中，我需要找出所有函数调用的逻辑顺序，然后一一更改。
-</p>
 
 **这一块暂且不赘述，晚点写一份详细的文档。**
 
@@ -110,6 +112,7 @@ with wave.open(file_path, "wb") as wf:
 综合权衡后，选择千问大语言模型，千问大语言模型是一个开源的中文大语言模型，具有函数调用功能，适合本项目使用。
 
 **1. 将千问大模型封装为api给小智ai调用**
+
 本项目调用大模型只能提供API接口，不能直接调用本地部署的大模型。于是我将千问大模型封装为api接口，使用flask框架进行封装。将其包装为官方接口一模一样的格式。
 
 本地部署后，千问大模型的确可以正常对话，但是封装api时出现了很多问题。我所做的封装方法如下：
@@ -125,12 +128,14 @@ with wave.open(file_path, "wb") as wf:
 以上错误是小智ai本身的代码问题，我自己封装的api都没有运行。找了很久的原因，始终没能发现问题所在。
 
 **2. 基于Ollama本地部署千问大模型**
-- 首先安装OLLama工具，这个工具可以很方便的将模型进行本地部署，linux下载命令：
+
+首先安装OLLama工具，这个工具可以很方便的将模型进行本地部署，linux下载命令：
     ```bash
     curl -fsSL https://ollama.com/install.sh | sh
     ```
-- 下载前可以修改ollama模型下载的位置和访问位置，linux中编辑~/.bashrc来修改环境变量，最后面添加export OLLAMA_MODELS=/path/to/ollama/models即可修改位置，服务器迁移的时候要记得修改，不然找不到。
-- 接着就是下载对应的模型，最简单的就是输入`ollama run qwen2.5:14b`。但是下载速度极慢，因此参考网上大佬的方法，模型刚开始下载快只是后来慢了，于是写一个自动脚本，下一会停一会。
+下载前可以修改ollama模型下载的位置和访问位置，linux中编辑~/.bashrc来修改环境变量，最后面添加export OLLAMA_MODELS=/path/to/ollama/models即可修改位置，服务器迁移的时候要记得修改，不然找不到。
+
+接着就是下载对应的模型，最简单的就是输入`ollama run qwen2.5:14b`。但是下载速度极慢，因此参考网上大佬的方法，模型刚开始下载快只是后来慢了，于是写一个自动脚本，下一会停一会。
     ```bash
     #!/bin/bash
 
@@ -157,13 +162,16 @@ with wave.open(file_path, "wb") as wf:
         fi
     done
     ```
-- 运行ollama服务（输入命令ollama serve）后，使用ollama list可以查看有哪些模型，能看到部署的千问说明没问题。
-- 上述操作没问题后，修改小智ai调用ollama模型，主要更改yaml配置文件：
-  - model_name: qwen2.5:14b 
-  - base_url: http://localhost:11434 
+
+运行ollama服务（输入命令ollama serve）后，使用ollama list可以查看有哪些模型，能看到部署的千问说明没问题。
+
+上述操作没问题后，修改小智ai调用ollama模型，主要更改yaml配置文件：
+- model_name: qwen2.5:14b 
+- base_url: http://localhost:11434 
 
 #### 四、基于SSH远程连接ESP32
 **1. zerotier内网穿透**
+
 首先是想通过zerotier进行内网穿透，但困难重重，暂且记录出现的问题吧
 - `curl -s https://install.zerotier.com | sudo bash`：这是安装代码，没有出现问题，成功安装
 - `sudo zerotier-one`：启动zerotier报错，权限警告、TUN/TAP 设备错误
@@ -177,6 +185,7 @@ ERROR: unable to configure virtual network port: could not open TUN/TAP device: 
 无法启动，后续所有操作都无法进行
 
 **2. SSH远程连接**
+
 通过ssh连接服务器，把远程服务器上的端口映射到本地局域网 IP 的指定端口。
 
 可以使用如下命令：`ssh -L 192.168.162.159:本地端口:远程服务器IP:远程服务器端口 用户名@远程服务器IP`，可将远程服务器的端口映射到本地局域网 IP 的指定端口。
